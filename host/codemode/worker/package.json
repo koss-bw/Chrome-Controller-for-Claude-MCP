@@ -1,0 +1,13 @@
+{
+  "name": "chrome-controller-mcp-codemode-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "worker.js",
+  "dependencies": {
+    "@cloudflare/codemode": "^0.3.7"
+  },
+  "devDependencies": {
+    "wrangler": "^4.94.0"
+  }
+}

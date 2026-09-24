@@ -1,0 +1,322 @@
+/* Side-panel Claude chat. Color tokens mirror recorder/options.html;
+   recorder-state colors echo the toolbar badge (rec #d23b2e, ok #0e8a5f,
+   working amber #a5701a).
+
+   Theme resolution: dark is the default (regardless of OS preference), set
+   here on :root so there's no flash while panel.js loads. The header toggle
+   can force either theme via [data-theme] on <html>, which always wins;
+   panel.js persists that explicit choice and re-applies it on load. */
+:root {
+  --bg: #15171b; --panel: #1c1f24; --ink: #e8eaee; --muted: #9aa0a8;
+  --line: #2a2e35; --accent: #7fa3ff;
+  --user-bg: #232a3a; --assistant-bg: #1c1f24;
+  --rec: #e5604f; --ok: #3fbf8f; --working: #c99239;
+}
+html[data-theme="light"] {
+  --bg: #f7f7f5; --panel: #fff; --ink: #1c1e22; --muted: #5b5f66;
+  --line: #e2e2dd; --accent: #2a5fd8;
+  --user-bg: #eef1fb; --assistant-bg: #fff;
+  --rec: #d23b2e; --ok: #0e8a5f; --working: #a5701a;
+}
+html[data-theme="dark"] {
+  --bg: #15171b; --panel: #1c1f24; --ink: #e8eaee; --muted: #9aa0a8;
+  --line: #2a2e35; --accent: #7fa3ff;
+  --user-bg: #232a3a; --assistant-bg: #1c1f24;
+  --rec: #e5604f; --ok: #3fbf8f; --working: #c99239;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; display: flex; flex-direction: column;
+  background: var(--bg); color: var(--ink);
+  font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Header */
+.hdr {
+  display: flex; align-items: center;
+  gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+/* Lit + flashing while any tab has a turn in flight — a glance at the header
+   tells you whether Claude is still working without checking each tab. */
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex: none;
+  background: var(--working); opacity: 0; transition: opacity 0.15s;
+}
+.status-dot.on { opacity: 1; animation: status-flash 1s ease-in-out infinite; }
+@keyframes status-flash { 50% { opacity: 0.25; } }
+/* Takes the whole header row now that the wordmark is gone. Everything packs
+   against the left edge (the default justify-content) — nothing grows to fill,
+   so no control drifts out to the right rail. */
+.hdr-actions { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.model {
+  font: inherit; font-size: 12px; padding: 4px 6px; max-width: 130px;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg); color: var(--ink); cursor: pointer;
+  /* Size to content, never grow — growing is what used to shove the buttons to
+     the far edge. Still shrinkable, and a flex item won't shrink below its
+     content width without min-width: 0, so narrowing the panel used to push
+     these over their neighbours instead of compressing them. The selects absorb
+     the squeeze; the icon buttons keep their hit area. */
+  flex: 0 1 auto; min-width: 0;
+}
+/* Tight cluster: the buttons are one control group, so they read as a unit
+   rather than as four items scattered along the row. */
+.hdr-icons { display: flex; align-items: center; gap: 2px; flex: none; }
+.hdr .icon-btn { flex: none; }
+.icon-btn {
+  border: 1px solid transparent; background: transparent; color: var(--muted);
+  font-size: 20px; line-height: 1; width: 30px; height: 30px; border-radius: 6px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.icon-btn:hover { background: var(--bg); color: var(--ink); border-color: var(--line); }
+/* SVG-based icons (the folder button): block kills the inline baseline gap so
+   the glyph centres on the same axis as the text-glyph buttons beside it. */
+.icon-btn svg { display: block; }
+
+/* Tab bar: one pill per open chat session (panel.js `sessions`). Hidden
+   entirely via :empty so a fresh single-tab session doesn't add a seam. */
+.tab-bar {
+  display: flex; align-items: flex-end; gap: 4px; padding: 6px 8px 0;
+  background: var(--panel); border-bottom: 1px solid var(--line);
+  overflow-x: auto; scrollbar-width: none;
+}
+.tab-bar::-webkit-scrollbar { display: none; }
+.tab {
+  display: flex; align-items: center; gap: 6px; flex: none; max-width: 150px;
+  padding: 6px 8px; margin-bottom: -1px; border: 1px solid transparent; border-bottom: none;
+  border-radius: 8px 8px 0 0; background: transparent; color: var(--muted);
+  font: inherit; font-size: 12px; cursor: pointer;
+}
+.tab:hover { color: var(--ink); }
+.tab.active { background: var(--bg); border-color: var(--line); color: var(--ink); }
+.tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Streaming in the background (tab isn't active) gets a small activity dot. */
+.tab.streaming:not(.active) .tab-label::after { content: " ●"; color: var(--working); font-size: 8px; }
+.tab-close {
+  flex: none; width: 15px; height: 15px; display: flex; align-items: center;
+  justify-content: center; border-radius: 4px; line-height: 1; font-size: 13px;
+}
+.tab-close:hover { background: var(--line); color: var(--ink); }
+
+/* Signed-out state */
+.signed-out {
+  margin: 16px 12px; padding: 16px; border: 1px solid var(--line);
+  border-radius: 10px; background: var(--panel); text-align: center;
+}
+.signed-out p { margin: 0 0 12px; color: var(--muted); }
+.primary {
+  font: inherit; font-weight: 600; padding: 8px 14px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 7px;
+  background: var(--accent); color: #fff;
+}
+
+/* Conversation. Each session gets its own .messages element inside the
+   container; only the active one is unhidden, so switching tabs is instant
+   and a background session keeps rendering into a hidden element. */
+.messages-container { flex: 1; display: flex; min-height: 0; }
+.messages { flex: 1; overflow-y: auto; padding: 14px 12px; scroll-behavior: smooth; }
+.messages[hidden] { display: none; }
+.msg {
+  max-width: 92%; margin: 0 0 12px; padding: 9px 12px; border-radius: 12px;
+  white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere;
+}
+
+/* Rendered markdown. pre-wrap is right for a raw text bubble but wrong once
+   the content is real block elements — it turns every newline between them
+   into an extra blank line. */
+.msg.md { white-space: normal; }
+.msg.md > *:first-child { margin-top: 0; }
+.msg.md > *:last-child { margin-bottom: 0; }
+.msg.md p { margin: 0 0 10px; }
+.msg.md h1, .msg.md h2, .msg.md h3,
+.msg.md h4, .msg.md h5, .msg.md h6 {
+  margin: 14px 0 6px; line-height: 1.3; font-weight: 650;
+}
+.msg.md h1 { font-size: 17px; }
+.msg.md h2 { font-size: 16px; }
+.msg.md h3 { font-size: 15px; }
+.msg.md h4, .msg.md h5, .msg.md h6 { font-size: 14px; }
+.msg.md ul, .msg.md ol { margin: 0 0 10px; padding-left: 20px; }
+.msg.md li { margin: 3px 0; }
+/* Nested lists sit tight against their parent item. */
+.msg.md li > ul, .msg.md li > ol { margin: 3px 0 3px; }
+.msg.md a { color: var(--accent); text-decoration: underline; }
+.msg.md strong { font-weight: 650; }
+.msg.md del { opacity: 0.7; }
+.msg.md hr { border: none; border-top: 1px solid var(--line); margin: 12px 0; }
+.msg.md blockquote {
+  margin: 0 0 10px; padding: 2px 0 2px 10px;
+  border-left: 2px solid var(--line); color: var(--muted);
+}
+.md-inline-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 4px;
+  padding: 1px 4px; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.md-code {
+  margin: 0 0 10px; padding: 8px 10px; border-radius: 8px;
+  background: var(--bg); border: 1px solid var(--line);
+  /* The panel is narrow — long lines scroll inside the block rather than
+     widening the message column. */
+  overflow-x: auto; white-space: pre; max-height: 320px; overflow-y: auto;
+}
+.md-code code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px; line-height: 1.5; background: none; border: none; padding: 0;
+}
+.md-table-wrap { overflow-x: auto; margin: 0 0 10px; }
+.md-table { border-collapse: collapse; font-size: 12px; }
+.md-table th, .md-table td {
+  border: 1px solid var(--line); padding: 4px 8px; text-align: left;
+  white-space: nowrap;
+}
+.md-table th { background: var(--bg); font-weight: 650; }
+.msg.user {
+  margin-left: auto; background: var(--user-bg);
+  border: 1px solid var(--line); border-bottom-right-radius: 4px;
+}
+/* Submitted while an earlier turn is still streaming; runs once it finishes. */
+.msg.user.queued { opacity: 0.55; border-style: dashed; }
+/* Queued turn dropped because the one ahead of it hit a blocking error
+   (signed out / server down) — never sent, kept in the transcript as a record. */
+.msg.user.dropped { opacity: 0.4; text-decoration: line-through; }
+.msg.assistant {
+  margin-right: auto; background: var(--assistant-bg);
+  border: 1px solid var(--line); border-bottom-left-radius: 4px;
+}
+.msg.error {
+  margin-right: auto; background: transparent;
+  border: 1px solid var(--rec); color: var(--rec);
+}
+.msg .cursor { /* blinking caret while streaming */
+  display: inline-block; width: 7px; margin-left: 1px; color: var(--muted);
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+.empty-hint { color: var(--muted); text-align: center; margin-top: 32px; font-size: 13px; }
+
+/* An assistant turn: text bubbles and tool chips interleaved in arrival order. */
+.turn { display: flex; flex-direction: column; align-items: flex-start; }
+.turn > .msg { width: 100%; }
+
+/* Tool call. <details> so collapsing is free; collapsed by default because
+   observations are frequently a whole file. */
+.tool-chip {
+  align-self: stretch; margin: 0 0 12px; border: 1px solid var(--line);
+  border-radius: 10px; background: var(--panel); font-size: 12px; overflow: hidden;
+}
+.tool-chip > summary {
+  display: flex; align-items: center; gap: 8px; justify-content: space-between;
+  padding: 7px 10px; cursor: pointer; list-style: none; user-select: none;
+}
+.tool-chip > summary::-webkit-details-marker { display: none; }
+.tool-chip > summary::before {
+  content: "▸"; color: var(--muted); font-size: 10px; flex: none;
+}
+.tool-chip[open] > summary::before { content: "▾"; }
+.tool-name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600; flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tool-status { color: var(--muted); flex: none; font-size: 11px; }
+.tool-chip.running { border-color: var(--working); }
+.tool-chip.running .tool-status { color: var(--working); }
+.tool-chip.failed { border-color: var(--rec); }
+.tool-chip.failed .tool-status { color: var(--rec); }
+.tool-args, .observation {
+  margin: 0; padding: 8px 10px; border-top: 1px solid var(--line);
+  background: var(--bg); color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px;
+  line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+  max-height: 260px; overflow: auto;
+}
+
+/* Non-fatal server-side notices (rate limits, unparseable output). */
+.notice {
+  align-self: stretch; margin: 0 0 12px; padding: 6px 10px;
+  border-left: 2px solid var(--working); color: var(--muted); font-size: 12px;
+}
+
+/* Manual token entry on the server-down card (bootstrap disabled). */
+.token-input {
+  display: block; width: 100%; margin: 0 0 12px; padding: 6px 8px;
+  font: inherit; font-size: 12px; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--bg); color: var(--ink);
+}
+
+/* Shell command shown on the server-down card. */
+.hint-cmd {
+  margin: 0 0 12px; padding: 6px 10px; border-radius: 6px;
+  background: var(--bg); border: 1px solid var(--line); color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+}
+
+/* Composer */
+.composer { border-top: 1px solid var(--line); background: var(--panel); padding: 10px 12px; }
+.input-row {
+  display: flex; align-items: flex-end; gap: 8px;
+  border: 1px solid var(--line); border-radius: 12px;
+  background: var(--bg); padding: 6px 6px 6px 10px;
+}
+.input {
+  flex: 1; border: none; background: transparent; color: var(--ink);
+  font: inherit; resize: none; outline: none; max-height: 160px; line-height: 1.45;
+}
+.send {
+  flex: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer;
+  border: none; background: var(--accent); color: #fff; font-size: 16px; line-height: 1;
+}
+.send:disabled { opacity: 0.4; cursor: default; }
+.send.stopping { background: var(--rec); }
+
+/* Slash-command autocomplete. Capped and scrollable because the list runs to
+   ~50 entries: an uncapped menu would cover the whole transcript. */
+.slash-menu {
+  display: flex; flex-direction: column; margin-bottom: 8px;
+  max-height: 210px; overflow-y: auto;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--panel);
+}
+.slash-item {
+  display: flex; align-items: baseline; gap: 8px; text-align: left;
+  padding: 6px 9px; border: none; background: transparent; color: var(--ink);
+  font: inherit; font-size: 12px; cursor: pointer; border-radius: 6px;
+}
+.slash-item:hover { background: var(--bg); }
+/* Keyboard selection, which is not hover — the two have to be distinguishable
+   when the pointer happens to rest over a different row. */
+.slash-item.sel { background: var(--bg); box-shadow: inset 2px 0 0 var(--accent); }
+.slash-name { font-weight: 600; white-space: nowrap; }
+.slash-desc {
+  color: var(--muted); font-size: 11px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.slash-tag {
+  margin-left: auto; flex: none; font-size: 10px; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px; padding: 0 6px;
+}
+.slash-empty { padding: 6px 9px; font-size: 12px; color: var(--muted); }
+
+/* Claude Code command palette */
+.palette { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.palette-btn {
+  font: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: var(--bg); color: var(--ink); white-space: nowrap;
+}
+.palette-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.palette-btn:disabled { opacity: 0.45; cursor: default; }
+
+.rec-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.rec-btn {
+  font: inherit; font-size: 12px; font-weight: 600; padding: 5px 12px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 7px; background: transparent; color: var(--ink);
+}
+.rec-btn:hover { border-color: var(--accent); }
+.rec-btn:disabled { opacity: 0.5; cursor: default; }
+.rec-state { font-size: 12px; color: var(--muted); }
+.rec-state.recording { color: var(--rec); font-weight: 600; }
+.rec-state.working { color: var(--working); }
+.rec-state.idle { color: var(--muted); }

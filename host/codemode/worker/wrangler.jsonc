@@ -1,0 +1,7 @@
+{
+  "name": "chrome-controller-mcp-codemode",
+  "main": "worker.js",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "worker_loaders": [{ "binding": "LOADER" }]
+}

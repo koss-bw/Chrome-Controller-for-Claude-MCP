@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude</title>
+<link rel="stylesheet" href="panel.css">
+</head>
+<body>
+<!-- No logo or wordmark here: Chrome's own side-panel title bar sits directly
+     above and already shows both, so repeating them cost a row of vertical
+     space and, once the panel was narrowed, the controls overlapped them. The
+     status dot stays — it reports work in flight, which is not branding. -->
+<header class="hdr">
+  <span id="statusDot" class="status-dot" aria-hidden="true"></span>
+  <div class="hdr-actions">
+    <select id="backend" class="model" title="Backend">
+      <option value="web">Web</option>
+      <option value="code">Code</option>
+    </select>
+    <select id="model" class="model" title="Model"></select>
+    <!-- Code backend only: change the working directory for this chat tab. -->
+    <!-- Flat outline folder rather than the 📁 emoji: the emoji renders as a
+         shaded 3D glyph that clashes with the other header buttons, and its
+         colour is fixed by the system font so it can't follow the theme.
+         currentColor inherits .icon-btn's muted/hover colours instead. -->
+    <!-- Grouped so the buttons pack tightly against each other while keeping a
+         normal gap from the selects to their left. -->
+    <div class="hdr-icons">
+      <button id="cwdBtn" class="icon-btn" type="button" title="Change working directory" aria-label="Change working directory" hidden>
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
+             stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <path d="M3.25 6.75A1.5 1.5 0 0 1 4.75 5.25h3.9a1.5 1.5 0 0 1 1.2.6l1 1.35a1.5 1.5 0 0 0 1.2.6h7.2a1.5 1.5 0 0 1 1.5 1.5v7.95a1.5 1.5 0 0 1-1.5 1.5H4.75a1.5 1.5 0 0 1-1.5-1.5V6.75Z"/>
+        </svg>
+      </button>
+      <button id="themeToggle" class="icon-btn" type="button" title="Toggle light/dark theme" aria-label="Toggle theme">&#9789;</button>
+      <button id="newChat" class="icon-btn" type="button" title="New chat" aria-label="New chat">&#43;</button>
+      <!-- Minimize parks every open chat (see panel.js parkSessions) and closes
+           the panel; reopening from the toolbar icon brings the tabs, their
+           transcripts and their drafts back. Close discards them. Chrome gives
+           extensions no way to collapse the side panel itself, so "minimize"
+           is close-and-remember rather than a shrunken window. -->
+      <button id="minimize" class="icon-btn" type="button" title="Minimize panel — keep these chats for later" aria-label="Minimize panel">&minus;</button>
+      <button id="close" class="icon-btn" type="button" title="Close panel — discard these chats" aria-label="Close panel">&times;</button>
+    </div>
+  </div>
+</header>
+
+<!-- One tab per open chat session (see panel.js `sessions`); the + button in
+     the header spawns a new one instead of resetting the current chat. -->
+<div id="tabBar" class="tab-bar" role="tablist"></div>
+
+<!-- Shown when claude.ai has no logged-in session (401/403). -->
+<div id="signedOut" class="signed-out" hidden>
+  <p id="signedOutMsg">Sign in to claude.ai to use this panel.</p>
+  <button id="signInBtn" class="primary" type="button">Open claude.ai</button>
+</div>
+
+<!-- Shown when the Code backend is selected but the local sidecar isn't up. -->
+<div id="serverDown" class="signed-out" hidden>
+  <p id="serverDownMsg">The local Claude Code server isn't running.</p>
+  <pre class="hint-cmd">./server/run.sh</pre>
+  <!-- Only needed when the server has "bootstrap": false; otherwise the panel
+       fetches the token itself and this can stay empty. -->
+  <input id="tokenInput" class="token-input" type="password" autocomplete="off"
+         placeholder="panel-token (only if bootstrap is off)">
+  <button id="retryServer" class="primary" type="button">Retry</button>
+</div>
+
+<div id="messagesContainer" class="messages-container"></div>
+
+<footer class="composer">
+  <!-- Slash-command autocomplete; Code backend only. Opens when the composer
+       starts with "/" and the command name is still being typed. Populated from
+       the CLI's own list of commands (see panel.js "Slash commands"), so it only
+       ever offers commands that work in a headless session. -->
+  <div id="slashMenu" class="slash-menu" role="listbox" hidden></div>
+  <!-- Palette of saved Claude Code commands; Code backend only. -->
+  <div id="palette" class="palette" hidden></div>
+  <div class="input-row">
+    <textarea id="input" class="input" rows="1" placeholder="Reply to Claude…"></textarea>
+    <button id="send" class="send" type="button" title="Send" aria-label="Send">&#8593;</button>
+  </div>
+  <div class="rec-row">
+    <button id="recBtn" class="rec-btn" type="button">Record</button>
+    <span id="recState" class="rec-state">idle</span>
+  </div>
+</footer>
+
+<script type="module" src="panel.js"></script>
+</body>
+</html>

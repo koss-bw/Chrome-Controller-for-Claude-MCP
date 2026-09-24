@@ -1,0 +1,22 @@
+node_modules/
+host/native-host-wrapper.sh
+host/native-host-wrapper.bat
+host/com.chrome_controller.claude_mcp.json
+server/.venv/
+__pycache__/
+.env
+.env.*
+*.log
+.DS_Store
+.wrangler/
+*.pem
+*.crx
+.claude/settings.local.json
+# captured browser data and credentials, never commit
+recordings/
+custom_apis/
+*.har
+config.json
+panel-token
+*token*
+*cookie*

@@ -1,0 +1,22 @@
+[
+  {
+    "id": "read-page",
+    "label": "Read this page",
+    "prompt": "Adopt the user's active browser tab, read it with mcp__browse__read_page, and summarise what the page is and what a user can do on it. Keep it under 150 words."
+  },
+  {
+    "id": "review-a11y",
+    "label": "Accessibility pass",
+    "prompt": "Read the active browser tab with mcp__browse__read_page. Report accessibility problems you can see from the accessibility tree: missing labels, poor heading order, images without alt text, controls that are not reachable. List concrete findings only — no general advice."
+  },
+  {
+    "id": "console-errors",
+    "label": "Check console",
+    "prompt": "Use mcp__browse__read_console_messages on the active tab and report any errors or warnings. If there are none, say so in one line."
+  },
+  {
+    "id": "explain-selection",
+    "label": "Explain this repo file",
+    "prompt": "Find the file I am most likely looking at in this repository, read it, and explain what it does and how it fits into the extension. Be specific about the code paths it participates in."
+  }
+]
